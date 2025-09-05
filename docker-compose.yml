@@ -1,34 +1,28 @@
-version: "3.8"
 services:
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: coobe
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: coobe
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
   backend:
     build: ./backend
-    environment:
-      - PORT=8080
-      - DATABASE_URL=postgres://coobe:secret@db:5432/coobe?sslmode=disable
-    depends_on:
-      - db
+    container_name: coobe-backend
     ports:
       - "8080:8080"
-    restart: unless-stopped
+    depends_on:
+      - db
 
   frontend:
     build: ./frontend
-    depends_on:
-      - backend
+    container_name: coobe-frontend
     ports:
-      - "3000:80"
-    restart: unless-stopped
+      - "80:80"
+
+  db:
+    image: postgres:15
+    container_name: coobe-db
+    restart: always
+    environment:
+      POSTGRES_USER: coobe
+      POSTGRES_PASSWORD: coobe
+      POSTGRES_DB: coobe
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
 volumes:
-  db_data:
+  pgdata:
