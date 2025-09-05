@@ -2,19 +2,17 @@ FROM golang:1.20-alpine AS build
 
 WORKDIR /src
 
+# Копируем и скачиваем зависимости
 COPY go.mod go.sum ./
-
-# Пробуем использовать альтернативный DNS
-RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf && \
-	echo "nameserver 8.8.4.4" >> /etc/resolv.conf && \
-	go mod download
+RUN go mod download
 
 COPY . .
 
 WORKDIR /src/cmd/server
 RUN go build -o /app/server .
 
-FROM scratch
+FROM alpine:3.18
+RUN apk add --no-cache ca-certificates
 COPY --from=build /app/server /server
 
 EXPOSE 8080
