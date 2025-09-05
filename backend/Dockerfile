@@ -1,8 +1,7 @@
-FROM golang:1.20-alpine AS build
+FROM golang:1.20-bullseye AS build
 
 WORKDIR /src
 
-# Копируем и скачиваем зависимости
 COPY go.mod go.sum ./
 RUN go mod download
 
@@ -11,8 +10,15 @@ COPY . .
 WORKDIR /src/cmd/server
 RUN go build -o /app/server .
 
-FROM alpine:3.18
-RUN apk add --no-cache ca-certificates
+FROM debian:bullseye-slim
+
+# Установка зависимостей и настройка сети
+RUN apt-get update && \
+	apt-get install -y ca-certificates && \
+	rm -rf /var/lib/apt/lists/* && \
+	echo "nameserver 8.8.8.8" > /etc/resolv.conf && \
+	echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+
 COPY --from=build /app/server /server
 
 EXPOSE 8080
