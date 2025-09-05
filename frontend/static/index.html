@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Coobe — Globe MVP</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>html,body{height:100%;margin:0;background:#000;overflow:hidden}canvas{display:block}#popup{position:absolute;padding:6px 10px;background:rgba(255,255,255,0.95);color:#000;font-family:Arial, sans-serif;font-size:13px;border-radius:8px;pointer-events:none;white-space:nowrap;display:none;transform:translate(-50%,-120%);box-shadow:0 6px 18px rgba(0,0,0,0.35)}</style>
+</head>
+<body>
+  <div id="popup">Это Найроби 🌍</div>
+
+  <script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
+  <script src="https://unpkg.com/three-globe@2.24.3/dist/three-globe.min.js"></script>
+
+  <script>
+    // --- scene / camera / renderer ---
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 3000);
+    camera.position.z = 260;
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Stars
+    const starGeometry = new THREE.BufferGeometry();
+    const starCount = 2500;
+    const starPos = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+      starPos[i*3 + 0] = (Math.random() - 0.5) * 2500;
+      starPos[i*3 + 1] = (Math.random() - 0.5) * 2500;
+      starPos[i*3 + 2] = (Math.random() - 0.5) * 2500;
+    }
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 1 })));
+
+    // Globe
+    const Globe = new ThreeGlobe()
+      .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
+      .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png');
+    Globe.globeMaterial().color = new THREE.Color(0xaaaaaa);
+    scene.add(Globe);
+
+    // Add one sample point (Nairobi)
+    function latLngToXYZ(lat, lng, radius = 100) {
+      const phi = (90 - lat) * Math.PI / 180;
+      const theta = (lng + 180) * Math.PI / 180;
+      const x = radius * Math.sin(phi) * Math.cos(theta);
+      const y = radius * Math.cos(phi);
+      const z = radius * Math.sin(phi) * Math.sin(theta);
+      return { x, y, z };
+    }
+
+    // visible small point
+    const visibleMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const visibleGeom = new THREE.SphereGeometry(0.45, 12, 12);
+
+    // hit sphere (for easier clicking)
+    function addPoint(lat, lng, text) {
+      const p = latLngToXYZ(lat, lng, 100);
+      const vis = new THREE.Mesh(visibleGeom, visibleMat);
+      vis.position.set(p.x, p.y, p.z);
+      Globe.add(vis);
+
+      const hitGeom = new THREE.SphereGeometry(2.2, 8, 8);
+      const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0 });
+      const hit = new THREE.Mesh(hitGeom, hitMat);
+      hit.position.set(p.x, p.y, p.z);
+      Globe.add(hit);
+      return hit;
+    }
+
+    const nairobiHit = addPoint(-1.2921, 36.8219, "Найроби");
+
+    // light
+    scene.add(new THREE.AmbientLight(0x333333));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    dirLight.position.set(1,1,1).normalize();
+    scene.add(dirLight);
+
+    // popup
+    const popup = document.getElementById('popup');
+    function showPopupForObject(obj, text){
+      const worldPos = new THREE.Vector3();
+      obj.getWorldPosition(worldPos);
+      worldPos.project(camera);
+      const sx = (worldPos.x * 0.5 + 0.5) * innerWidth;
+      const sy = (-worldPos.y * 0.5 + 0.5) * innerHeight;
+      popup.style.left = sx + 'px';
+      popup.style.top = (sy - 20) + 'px';
+      popup.textContent = text || 'Мысль';
+      popup.style.display = 'block';
+    }
+    function hidePopup(){ popup.style.display = 'none' }
+
+    // raycaster
+    const raycaster = new THREE.Raycaster();
+    const mouseN = new THREE.Vector2();
+    function handleClick(e){
+      mouseN.x = (e.clientX / innerWidth) * 2 - 1;
+      mouseN.y = -(e.clientY / innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouseN, camera);
+      const inter = raycaster.intersectObject(nairobiHit, true);
+      if(inter.length>0){
+        showPopupForObject(nairobiHit, 'Это Найроби 🌍');
+      } else {
+        hidePopup();
+      }
+    }
+    // simple drag-to-rotate + inertia + wheel-zoom (поддержка touch)
+    let isDown=false, lastX=0, lastY=0, moved=false;
+    let velocityX=0, velocityY=0;
+    const ROT_SPEED=0.006, FRICTION=0.95;
+    let autoRotate=true;
+
+    renderer.domElement.addEventListener('pointerdown', (e)=>{
+      isDown=true; moved=false; lastX=e.clientX; lastY=e.clientY; autoRotate=false; velocityX=0; velocityY=0; hidePopup();
+    });
+    window.addEventListener('pointermove', (e)=>{
+      if(!isDown) return;
+      const dx=e.clientX-lastX, dy=e.clientY-lastY;
+      lastX=e.clientX; lastY=e.clientY;
+      Globe.rotation.y += dx*ROT_SPEED;
+      Globe.rotation.x += dy*ROT_SPEED*0.5;
+      Globe.rotation.x = Math.max(-Math.PI/2+0.1, Math.min(Math.PI/2-0.1, Globe.rotation.x));
+      velocityX = dx*ROT_SPEED; velocityY = dy*ROT_SPEED*0.5;
+      if(Math.abs(dx)>2 || Math.abs(dy)>2) moved=true;
+    }, { passive:true });
+    window.addEventListener('pointerup', (e)=>{
+      isDown=false;
+      if(!moved) handleClick(e);
+      // resume auto-rotate after inertia dies (handled in animate)
+    });
+    renderer.domElement.addEventListener('wheel', (e)=>{ e.preventDefault(); camera.position.z += e.deltaY*0.06; camera.position.z = Math.max(140, Math.min(600, camera.position.z)); }, { passive:false });
+
+    // websocket client (подключается к backend)
+    let ws;
+    function initWS(){
+      try {
+        const url = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.hostname + ':8080/ws';
+        ws = new WebSocket(url);
+        ws.onopen = ()=> console.log('ws open', url);
+        ws.onmessage = (ev)=>{
+          try {
+            const msg = JSON.parse(ev.data);
+            if(msg.type === 'new_thought' && msg.data && typeof msg.data.lat === 'number' ){
+              // добавляем точку на глобус
+              addPoint(msg.data.lat, msg.data.lng, msg.data.text);
+            } else {
+              console.log('ws msg', msg);
+            }
+          } catch(e){ console.warn('ws parse err', e); }
+        };
+        ws.onclose = ()=> setTimeout(initWS, 3000);
+        ws.onerror = ()=> console.warn('ws err');
+      } catch (e) { console.warn(e); }
+    }
+    initWS();
+
+    // animation (auto-rotate + inertia)
+    function animate(){
+      requestAnimationFrame(animate);
+      if(!isDown){
+        Globe.rotation.y += velocityX;
+        Globe.rotation.x += velocityY;
+        velocityX *= FRICTION; velocityY *= FRICTION;
+        if(Math.abs(velocityX) < 0.00005 && Math.abs(velocityY) < 0.00005) {
+          autoRotate = true;
+        }
+      }
+      if(autoRotate) Globe.rotation.y += 0.0008;
+      // rotate stars slightly
+      scene.children.forEach(ch => { if(ch.type === 'Points') ch.rotation.y += 0.0002; });
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', ()=>{ camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+  </script>
+</body>
+</html>
