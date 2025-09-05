@@ -12,7 +12,6 @@ RUN go build -o /app/server .
 
 FROM alpine:3.18
 COPY --from=build /app/server /server
-COPY static /static
 
 EXPOSE 8080
 CMD ["/server"]
