@@ -1,65 +1,69 @@
 <!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Кнопка и счётчик</title>
-    <style>
-      body {
-        margin: 0;
-        height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: system-ui, sans-serif;
-        background: #111;
-        color: #fff;
-      }
-      #counter {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        font-size: 20px;
-        background: #222;
-        padding: 6px 12px;
-        border-radius: 8px;
-      }
-      button {
-        font-size: 22px;
-        padding: 12px 24px;
-        border: none;
-        border-radius: 12px;
-        background: #ff6600;
-        color: #fff;
-        cursor: pointer;
-      }
-      button:hover {
-        background: #ff8800;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="counter">0</div>
-    <button id="btn">Кнопка</button>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>Coobe — кнопка</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: #111;
+      color: #fff;
+    }
+    .counter {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      font-size: 22px;
+      font-weight: bold;
+    }
+    button {
+      padding: 15px 40px;
+      font-size: 20px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #0af;
+      color: white;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #09c;
+    }
+  </style>
+</head>
+<body>
+  <!-- Счётчик -->
+  <div class="counter">Счётчик: <span id="count">0</span></div>
 
-    <script>
-      const counterEl = document.getElementById("counter");
-      const btn = document.getElementById("btn");
+  <!-- Кнопка -->
+  <button id="btn">Кнопка</button>
 
-      // Загружаем текущее значение при старте
-      async function loadCount() {
-        const res = await fetch("/api/count");
-        const data = await res.json();
-        counterEl.textContent = data.count;
-      }
+  <script>
+    const countEl = document.getElementById("count");
+    const btn = document.getElementById("btn");
 
-      // Увеличиваем по клику
-      btn.addEventListener("click", async () => {
-        const res = await fetch("/api/increment", { method: "POST" });
-        const data = await res.json();
-        counterEl.textContent = data.count;
-      });
+    // Функция загрузки текущего значения счётчика
+    async function loadCount() {
+      const res = await fetch("/api/count");
+      const data = await res.json();
+      countEl.textContent = data.count;
+    }
 
-      loadCount();
-    </script>
-  </body>
+    // Обработчик кнопки
+    btn.addEventListener("click", async () => {
+      const res = await fetch("/api/increment", { method: "POST" });
+      const data = await res.json();
+      countEl.textContent = data.count;
+    });
+
+    // При загрузке страницы подгружаем текущее значение
+    loadCount();
+  </script>
+</body>
 </html>
