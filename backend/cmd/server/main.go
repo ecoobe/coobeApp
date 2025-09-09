@@ -18,13 +18,17 @@ var (
 
 func main() {
 	// ====== Обработка фронтенда ======
-	// Берём путь до папки с index.html (лежит в ../frontend относительно backend/cmd/server)
-	frontendPath := filepath.Join("..", "..", "frontend")
+	frontendPath := filepath.Join("frontend")
 
-	// FileServer умеет отдавать статические файлы (HTML, JS, CSS)
-	fs := http.FileServer(http.Dir(frontendPath))
-	// Все запросы по "/" будут искать файлы в frontendPath
-	http.Handle("/", fs)
+	// Отдаём index.html при заходе на "/"
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			// Если что-то вроде /style.css — отдаём как статику
+			http.ServeFile(w, r, filepath.Join(frontendPath, r.URL.Path))
+			return
+		}
+		http.ServeFile(w, r, filepath.Join(frontendPath, "index.html"))
+	})
 
 	// ====== API: получить текущее значение ======
 	http.HandleFunc("/api/count", func(w http.ResponseWriter, r *http.Request) {
