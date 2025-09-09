@@ -1,4 +1,4 @@
-module github.com/ecoobe/coobeApp/backend
+module github.com/ecoobe/coobeApp
 
 go 1.20
 
