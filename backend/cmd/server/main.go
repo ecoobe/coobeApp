@@ -1,34 +1,46 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 	"log"
 	"net/http"
+	"sync"
+)
+
+var (
+	count int
+	mu    sync.Mutex
 )
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Отдаём простую HTML-страницу с русским текстом
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Coobe — приветствие</title>
-    <style>
-      body { margin:0; height:100vh; display:flex; align-items:center; justify-content:center;
-             font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-             background: #000; color: #fff; }
-      h1 { font-size: 26px; font-weight: 500; }
-    </style>
-  </head>
-  <body>
-    <h1>Привет, этот сайт написан на Go.</h1>
-  </body>
-</html>`)
+	// Отдаём статику (фронтенд)
+	http.Handle("/", http.FileServer(http.Dir("./frontend")))
+
+	// API: получить текущее значение
+	http.HandleFunc("/api/count", func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"count": count})
+	})
+
+	// API: увеличить счётчик
+	http.HandleFunc("/api/increment", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		mu.Lock()
+		count++
+		newValue := count
+		mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"count": newValue})
 	})
 
 	log.Println("➡️  Server listening on :8080")
-	// Если порт уже занят, тут будет ошибка — будет напечатана в логе
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

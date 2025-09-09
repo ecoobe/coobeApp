@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Кнопка и счётчик</title>
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: system-ui, sans-serif;
+        background: #111;
+        color: #fff;
+      }
+      #counter {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        font-size: 20px;
+        background: #222;
+        padding: 6px 12px;
+        border-radius: 8px;
+      }
+      button {
+        font-size: 22px;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 12px;
+        background: #ff6600;
+        color: #fff;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #ff8800;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="counter">0</div>
+    <button id="btn">Кнопка</button>
+
+    <script>
+      const counterEl = document.getElementById("counter");
+      const btn = document.getElementById("btn");
+
+      // Загружаем текущее значение при старте
+      async function loadCount() {
+        const res = await fetch("/api/count");
+        const data = await res.json();
+        counterEl.textContent = data.count;
+      }
+
+      // Увеличиваем по клику
+      btn.addEventListener("click", async () => {
+        const res = await fetch("/api/increment", { method: "POST" });
+        const data = await res.json();
+        counterEl.textContent = data.count;
+      });
+
+      loadCount();
+    </script>
+  </body>
+</html>
