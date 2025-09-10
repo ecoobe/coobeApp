@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: coobe-backend
+    ports:
+      - "8080:8080"
+    networks:
+      - coobe-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: coobe-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - coobe-net
+
+networks:
+  coobe-net:
+    driver: bridge

@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coobe-backend
+  labels:
+    app: coobe-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coobe-backend
+  template:
+    metadata:
+      labels:
+        app: coobe-backend
+    spec:
+      containers:
+        - name: coobe-backend
+          image: coobe-backend:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coobe-backend
+spec:
+  selector:
+    app: coobe-backend
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coobe-frontend
+  labels:
+    app: coobe-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coobe-frontend
+  template:
+    metadata:
+      labels:
+        app: coobe-frontend
+    spec:
+      containers:
+        - name: coobe-frontend
+          image: coobe-frontend:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coobe-frontend
+spec:
+  selector:
+    app: coobe-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
