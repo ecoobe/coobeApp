@@ -3,24 +3,25 @@ FROM golang:1.20-alpine AS build
 
 WORKDIR /src
 
-# Настройка: отключаем IPv6, используем IPv4
+# Настройка DNS и репозиториев Alpine
 RUN echo "hosts: files dns" > /etc/nsswitch.conf \
 	&& echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories \
 	&& echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories
 
-# Устанавливаем git
-RUN apk add --no-cache git
+# Устанавливаем git с повторными попытками
+RUN set -eux; \
+	for i in 1 2 3; do apk add --no-cache git && break || sleep 3; done
 
 # Копируем зависимости
 COPY go.mod go.sum ./
 
-# Настройки для go mod
+# Настройки Go (только IPv4)
 ENV GODEBUG=netdns=go \
 	GOPROXY=https://proxy.golang.org,direct
 
 RUN go mod download
 
-# Копируем код
+# Копируем весь код
 COPY . .
 
 # Собираем бинарь
@@ -31,11 +32,14 @@ FROM alpine:3.18
 
 WORKDIR /app
 
-# Настройка: IPv4-only, обновление репозиториев
+# Настройка DNS + репо
 RUN echo "hosts: files dns" > /etc/nsswitch.conf \
 	&& echo "http://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories \
-	&& echo "http://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories \
-	&& apk add --no-cache ca-certificates \
+	&& echo "http://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories
+
+# Устанавливаем сертификаты с повторными попытками
+RUN set -eux; \
+	for i in 1 2 3; do apk add --no-cache ca-certificates && break || sleep 3; done \
 	&& update-ca-certificates
 
 COPY --from=build /app/server .
