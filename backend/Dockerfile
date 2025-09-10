@@ -1,44 +1,45 @@
 # --- СТАДИЯ 1: сборка бинарника ---
 FROM golang:1.20-alpine AS build
 
-# Рабочая директория внутри контейнера
 WORKDIR /src
 
-# Устанавливаем нужные пакеты (git нужен для go modules)
+# Настройка: отключаем IPv6, используем IPv4
+RUN echo "hosts: files dns" > /etc/nsswitch.conf \
+	&& echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories \
+	&& echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories
+
+# Устанавливаем git
 RUN apk add --no-cache git
 
-# Переносим файлы зависимостей (go.mod и go.sum)
+# Копируем зависимости
 COPY go.mod go.sum ./
 
-# Настройки чтобы Go использовал IPv4 и стабильный proxy
+# Настройки для go mod
 ENV GODEBUG=netdns=go \
-	GOPROXY=https://proxy.golang.org,direct \
-	GONOSUMDB=* \
-	GOINSECURE=*
+	GOPROXY=https://proxy.golang.org,direct
 
-# Загружаем зависимости
 RUN go mod download
 
-# Переносим весь исходный код
+# Копируем код
 COPY . .
 
-# Собираем бинарник
+# Собираем бинарь
 RUN go build -o /app/server ./cmd/server
 
-# --- СТАДИЯ 2: минимальный образ для запуска ---
+# --- СТАДИЯ 2: рантайм ---
 FROM alpine:3.18
 
-# Рабочая директория
 WORKDIR /app
 
-# Устанавливаем сертификаты для HTTPS (иначе Go клиент может не ходить по HTTPS)
-RUN apk add --no-cache ca-certificates
+# Настройка: IPv4-only, обновление репозиториев
+RUN echo "hosts: files dns" > /etc/nsswitch.conf \
+	&& echo "http://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories \
+	&& echo "http://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories \
+	&& apk add --no-cache ca-certificates \
+	&& update-ca-certificates
 
-# Копируем бинарник из стадии сборки
 COPY --from=build /app/server .
 
-# Указываем порт
 EXPOSE 8080
 
-# Запускаем сервер
 CMD ["./server"]
