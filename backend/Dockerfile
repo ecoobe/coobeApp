@@ -1,32 +1,44 @@
-# ---- Стадия сборки ----
+# --- СТАДИЯ 1: сборка бинарника ---
 FROM golang:1.20-alpine AS build
 
+# Рабочая директория внутри контейнера
 WORKDIR /src
 
-# RUN apk add --no-cache git
+# Устанавливаем нужные пакеты (git нужен для go modules)
+RUN apk add --no-cache git
 
-# Копируем go.mod/go.sum и качаем зависимости
+# Переносим файлы зависимостей (go.mod и go.sum)
 COPY go.mod go.sum ./
+
+# Настройки чтобы Go использовал IPv4 и стабильный proxy
+ENV GODEBUG=netdns=go \
+	GOPROXY=https://proxy.golang.org,direct \
+	GONOSUMDB=* \
+	GOINSECURE=*
+
+# Загружаем зависимости
 RUN go mod download
 
-# Копируем код backend
-COPY backend/ ./backend/
+# Переносим весь исходный код
+COPY . .
 
 # Собираем бинарник
-WORKDIR /src/backend/cmd/server
-RUN go build -o /app/server .
+RUN go build -o /app/server ./cmd/server
 
-# ---- Финальный образ ----
+# --- СТАДИЯ 2: минимальный образ для запуска ---
 FROM alpine:3.18
 
+# Рабочая директория
 WORKDIR /app
 
-# Бинарник
+# Устанавливаем сертификаты для HTTPS (иначе Go клиент может не ходить по HTTPS)
+RUN apk add --no-cache ca-certificates
+
+# Копируем бинарник из стадии сборки
 COPY --from=build /app/server .
 
-# Фронт кладём внутрь образа бэка (чтобы отдавать статику тоже через Go)
-COPY frontend/ ./frontend/
-
+# Указываем порт
 EXPOSE 8080
 
+# Запускаем сервер
 CMD ["./server"]
