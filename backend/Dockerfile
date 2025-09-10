@@ -3,7 +3,7 @@ FROM golang:1.20-alpine AS build
 
 WORKDIR /src
 
-RUN apk add --no-cache git
+# RUN apk add --no-cache git
 
 # Копируем go.mod/go.sum и качаем зависимости
 COPY go.mod go.sum ./
