@@ -53,24 +53,30 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
+    user: "65534:65534"  # Запуск от пользователя nobody
     volumes:
       - ./monitoring/prometheus:/etc/prometheus
       - ./monitoring/prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.allow-overlapping-blocks'
+      - '--web.enable-admin-api'
     networks:
       - app-network
     restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
-    user: "472:472"
+    user: "472:472"  # Официальный пользователь Grafana
     volumes:
       - ./monitoring/grafana:/var/lib/grafana
       - ./monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini
     environment:
       GF_SERVER_ROOT_URL: https://grafana.coobe.ru
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_PATHS_DATA: /var/lib/grafana
     networks:
       - app-network
     restart: unless-stopped
