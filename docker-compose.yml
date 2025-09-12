@@ -5,21 +5,90 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    ports:
-      - "8080:8080"
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/count"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - app-network
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    depends_on:
+      - nginx
+    command: certonly --webroot --webroot-path=/var/www/certbot --email easyarm@yandex.ru --agree-tos --no-eff-email -d coobe.ru -d www.coobe.ru -d prometheus.coobe.ru -d grafana.coobe.ru -d node-exporter.coobe.ru
+    networks:
+      - app-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - ./monitoring/prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    user: "472:472"
+    volumes:
+      - ./monitoring/grafana:/var/lib/grafana
+      - ./monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini
+    environment:
+      GF_SERVER_ROOT_URL: https://grafana.coobe.ru
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
+    networks:
+      - app-network
+    restart: unless-stopped
 
 networks:
   app-network:
