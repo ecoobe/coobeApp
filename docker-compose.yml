@@ -56,10 +56,11 @@ services:
     user: "65534:65534"
     volumes:
      - ./monitoring/prometheus:/etc/prometheus
-     - ./monitoring/prometheus_data:/prometheus
+     - prometheus_data:/prometheus
     command:
      - '--config.file=/etc/prometheus/prometheus.yml'
      - '--storage.tsdb.path=/prometheus'
+     - '--storage.tsdb.retention.time=30d'  # Хранение данных 30 дней
      - '--web.enable-lifecycle'
     networks:
      - app-network
@@ -93,6 +94,10 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+
+volumes:
+  prometheus_data:
+    driver: local
 
 networks:
   app-network:
