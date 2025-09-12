@@ -1,34 +1,26 @@
-version: "3.9"
+version: '3.8'
 
 services:
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: coobe-backend
     ports:
       - "8080:8080"
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     networks:
-      - coobe-net
+      - app-network
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: coobe-frontend
+      context: .
+      dockerfile: frontend/Dockerfile
     ports:
       - "80:80"
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     depends_on:
       - backend
     networks:
-      - coobe-net
+      - app-network
 
 networks:
-  coobe-net:
+  app-network:
     driver: bridge
