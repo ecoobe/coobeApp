@@ -53,18 +53,16 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
-    user: "65534:65534"  # Запуск от пользователя nobody
+    user: "65534:65534"
     volumes:
-      - ./monitoring/prometheus:/etc/prometheus
-      - ./monitoring/prometheus_data:/prometheus
+     - ./monitoring/prometheus:/etc/prometheus
+     - ./monitoring/prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-lifecycle'
-      - '--storage.tsdb.allow-overlapping-blocks'
-      - '--web.enable-admin-api'
+     - '--config.file=/etc/prometheus/prometheus.yml'
+     - '--storage.tsdb.path=/prometheus'
+     - '--web.enable-lifecycle'
     networks:
-      - app-network
+     - app-network
     restart: unless-stopped
 
   grafana:
