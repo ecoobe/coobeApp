@@ -1,13 +1,10 @@
-FROM golang:1.24
-
-# Устанавливаем DNS-серверы Google
-RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf && \
-	echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+FROM golang:1.24-alpine
 
 WORKDIR /app
 
+# Копируем файлы зависимостей и загружаем модули
 COPY go.mod go.sum ./
-RUN go mod download
+RUN GOPROXY=https://proxy.golang.org,direct go mod download
 
 COPY backend/ ./backend/
 
