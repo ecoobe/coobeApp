@@ -81,6 +81,15 @@ func processParallel(tasks int, workTime int) {
 }
 
 func main() {
+	// Выводим информацию о зарегистрированных обработчиках
+	log.Println("Registered handlers:")
+	log.Println("  - /api/count")
+	log.Println("  - /api/increment")
+	log.Println("  - /api/sequential")
+	log.Println("  - /api/parallel")
+	log.Println("  - /api/reset")
+	log.Println("  - /metrics")
+
 	// Инициализация генератора случайных чисел
 	rand.Seed(time.Now().UnixNano())
 
