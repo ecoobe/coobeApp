@@ -2,28 +2,39 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>Coobe — кнопка</title>
+  <title>Coobe — изучение горутин</title>
   <style>
     body {
       margin: 0;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      padding: 20px;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
       background: #111;
       color: #fff;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
     }
     .counter {
-      position: absolute;
-      top: 20px;
-      right: 30px;
-      font-size: 22px;
+      font-size: 24px;
       font-weight: bold;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 30px;
     }
     button {
-      padding: 15px 40px;
-      font-size: 20px;
+      padding: 15px;
+      font-size: 16px;
       font-weight: 500;
       border: none;
       border-radius: 8px;
@@ -35,35 +46,174 @@
     button:hover {
       background: #09c;
     }
+    button.reset {
+      background: #f44336;
+      grid-column: span 2;
+    }
+    button.reset:hover {
+      background: #d32f2f;
+    }
+    .results {
+      background: #222;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    .metric-card {
+      background: #222;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    .chart {
+      width: 100%;
+      height: 200px;
+      background: #222;
+      margin-top: 20px;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
-  <!-- Счётчик -->
-  <div class="counter">Счётчик: <span id="count">0</span></div>
+  <div class="container">
+    <div class="header">
+      <h1>Изучение горутин и многопоточности в Go</h1>
+      <p>Нажмите кнопки ниже, чтобы увидеть разницу между последовательным и параллельным выполнением</p>
+    </div>
 
-  <!-- Кнопка -->
-  <button id="btn">Кнопка</button>
+    <div class="counter">Счётчик: <span id="count">0</span></div>
+
+    <div class="buttons">
+      <button id="btn-simple">Простое увеличение</button>
+      <button id="btn-sequential">Последовательная обработка (10 задач)</button>
+      <button id="btn-parallel">Параллельная обработка (10 задач)</button>
+      <button id="btn-reset" class="reset">Сбросить счетчик</button>
+    </div>
+
+    <div class="results">
+      <h3>Результаты последней операции:</h3>
+      <p id="result-info">Выполните операцию, чтобы увидеть результаты</p>
+    </div>
+
+    <div class="metrics">
+      <div class="metric-card">
+        <h3>Время выполнения</h3>
+        <p id="duration">-</p>
+      </div>
+      <div class="metric-card">
+        <h3>Активные горутины</h3>
+        <p id="goroutines">-</p>
+      </div>
+    </div>
+
+    <div class="chart" id="requests-chart">
+      <p style="text-align: center; padding: 80px 0;">Графики запросов будут отображаться в Grafana</p>
+    </div>
+  </div>
 
   <script>
     const countEl = document.getElementById("count");
-    const btn = document.getElementById("btn");
+    const resultInfo = document.getElementById("result-info");
+    const durationEl = document.getElementById("duration");
+    const goroutinesEl = document.getElementById("goroutines");
+    const btnSimple = document.getElementById("btn-simple");
+    const btnSequential = document.getElementById("btn-sequential");
+    const btnParallel = document.getElementById("btn-parallel");
+    const btnReset = document.getElementById("btn-reset");
 
     // Функция загрузки текущего значения счётчика
     async function loadCount() {
-      const res = await fetch("/api/count");
-      const data = await res.json();
-      countEl.textContent = data.count;
+      try {
+        const res = await fetch("/api/count");
+        const data = await res.json();
+        countEl.textContent = data.count;
+      } catch (error) {
+        console.error("Error loading count:", error);
+      }
     }
 
-    // Обработчик кнопки
-    btn.addEventListener("click", async () => {
-      const res = await fetch("/api/increment", { method: "POST" });
-      const data = await res.json();
-      countEl.textContent = data.count;
+    // Функция для обновления метрик
+    async function updateMetrics() {
+      try {
+        // Здесь можно добавить запросы к метрикам Prometheus
+        // или использовать WebSocket для реального времени
+        goroutinesEl.textContent = "Данные в Grafana";
+      } catch (error) {
+        console.error("Error updating metrics:", error);
+      }
+    }
+
+    // Обработчики кнопок
+    btnSimple.addEventListener("click", async () => {
+      try {
+        const start = performance.now();
+        const res = await fetch("/api/increment", { method: "POST" });
+        const data = await res.json();
+        const duration = (performance.now() - start).toFixed(2);
+        
+        countEl.textContent = data.count;
+        durationEl.textContent = `${duration} мс`;
+        resultInfo.textContent = "Простое увеличение счетчика выполнено";
+      } catch (error) {
+        console.error("Error incrementing:", error);
+        resultInfo.textContent = "Ошибка при выполнении запроса";
+      }
+    });
+
+    btnSequential.addEventListener("click", async () => {
+      try {
+        const start = performance.now();
+        const res = await fetch("/api/sequential", { method: "POST" });
+        const data = await res.json();
+        const duration = (performance.now() - start).toFixed(2);
+        
+        countEl.textContent = data.count;
+        durationEl.textContent = `${duration} мс`;
+        resultInfo.textContent = `Последовательная обработка ${data.tasks} задач завершена за ${data.duration.toFixed(2)} секунд`;
+      } catch (error) {
+        console.error("Error sequential processing:", error);
+        resultInfo.textContent = "Ошибка при выполнении запроса";
+      }
+    });
+
+    btnParallel.addEventListener("click", async () => {
+      try {
+        const start = performance.now();
+        const res = await fetch("/api/parallel", { method: "POST" });
+        const data = await res.json();
+        const duration = (performance.now() - start).toFixed(2);
+        
+        countEl.textContent = data.count;
+        durationEl.textContent = `${duration} мс`;
+        resultInfo.textContent = `Параллельная обработка ${data.tasks} задач завершена за ${data.duration.toFixed(2)} секунд`;
+      } catch (error) {
+        console.error("Error parallel processing:", error);
+        resultInfo.textContent = "Ошибка при выполнении запроса";
+      }
+    });
+
+    btnReset.addEventListener("click", async () => {
+      try {
+        const res = await fetch("/api/reset", { method: "POST" });
+        const data = await res.json();
+        
+        countEl.textContent = data.count;
+        resultInfo.textContent = "Счетчик сброшен";
+      } catch (error) {
+        console.error("Error resetting:", error);
+        resultInfo.textContent = "Ошибка при сбросе счетчика";
+      }
     });
 
     // При загрузке страницы подгружаем текущее значение
     loadCount();
+    
+    // Обновляем метрики каждые 5 секунд
+    setInterval(updateMetrics, 5000);
   </script>
 </body>
 </html>
